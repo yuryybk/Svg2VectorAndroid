@@ -2,6 +2,8 @@ package com.vector.svg2vectorandroid;
 
 import com.android.ide.common.vectordrawable.Svg2Vector;
 
+import org.xml.sax.SAXException;
+
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -21,23 +23,20 @@ public class SvgFilesProcessor {
 	
 	private Path sourceSvgPath;
 	private Path destinationVectorPath;
-	private String extention;
-	private String extentionSuffix;
+	private String extension;
 	
 	public SvgFilesProcessor(String sourceSvgDirectory) {
-		this(sourceSvgDirectory, sourceSvgDirectory+"/ProcessedSVG", "xml", "_svg");
+		this(sourceSvgDirectory, sourceSvgDirectory+"/ProcessedSVG", "xml");
 	}
 	
 	public SvgFilesProcessor(String sourceSvgDirectory, String destinationVectorDirectory) {
-		this(sourceSvgDirectory, destinationVectorDirectory, "xml", "_svg");
+		this(sourceSvgDirectory, destinationVectorDirectory, "xml");
 	}
 
-	public SvgFilesProcessor(String sourceSvgDirectory, String destinationVectorDirectory, String extention,
-                             String extentionSuffix) {
+	public SvgFilesProcessor(String sourceSvgDirectory, String destinationVectorDirectory, String extension) {
 		this.sourceSvgPath = Paths.get(sourceSvgDirectory);
 		this.destinationVectorPath = Paths.get(destinationVectorDirectory);
-		this.extention = extention;
-		this.extentionSuffix = extentionSuffix;
+		this.extension = extension;
 	}
 	
 	public void process(){
@@ -74,7 +73,11 @@ public class SvgFilesProcessor {
 		
 					public FileVisitResult visitFile(Path file,
 							BasicFileAttributes attrs) throws IOException {
-						convertToVector(file, destinationVectorPath.resolve(sourceSvgPath.relativize(file)));
+						try {
+							convertToVector(file, destinationVectorPath.resolve(sourceSvgPath.relativize(file)));
+						} catch (SAXException e) {
+							e.printStackTrace();
+						}
 						return CONTINUE;
 					}
 
@@ -88,24 +91,24 @@ public class SvgFilesProcessor {
 				System.out.println("source not a directory");
 			}
 			
-		} catch (IOException e){
+		} catch (Exception e){
 			System.out.println("IOException "+e.getMessage());
 		}
 		
 	}
-	
-	private void convertToVector(Path source, Path target) throws IOException{
+
+	private void convertToVector(Path source, Path target) throws IOException, SAXException {
 		// convert only if it is .svg
-		if(source.getFileName().toString().endsWith(".svg")){
-			File targetFile = getFileWithXMlExtention(target, extention, extentionSuffix);
+		if (source.getFileName().toString().endsWith(".svg")) {
+			File targetFile = getFileWithXMlExtension(target, extension);
 			FileOutputStream fous = new FileOutputStream(targetFile);
 			Svg2Vector.parseSvgToXml(source.toFile(), fous);
 		} else {
-			System.out.println("Skipping file as its not svg "+source.getFileName().toString());
+			System.out.println("Skipping file as its not svg " + source.getFileName().toString());
 		}
-    }
+	}
 	
-	private File getFileWithXMlExtention(Path target, String extention, String extentionSuffix){
+	private File getFileWithXMlExtension(Path target, String extension){
 		String svgFilePath =  target.toFile().getAbsolutePath();
 		StringBuilder svgBaseFile = new StringBuilder();
 		int index = svgFilePath.lastIndexOf(".");
@@ -113,9 +116,8 @@ public class SvgFilesProcessor {
 			String subStr = svgFilePath.substring(0, index);
 			svgBaseFile.append(subStr);
 		}
-		svgBaseFile.append(null != extentionSuffix ? extentionSuffix : "");
 		svgBaseFile.append(".");
-		svgBaseFile.append(extention);
+		svgBaseFile.append(extension);
 		return new File(svgBaseFile.toString());	
 	}
 
